@@ -211,8 +211,8 @@
             
               
                 
-                <a class="post-title-link" href="/2015/11/24/201511242049/" itemprop="url">
-                  关于 MAC 硬盘格式的一些坑点
+                <a class="post-title-link" href="/2015/12/03/201512031644/" itemprop="url">
+                  logstash 配置语法
                 </a>
               
             
@@ -222,8 +222,8 @@
         <div class="post-meta">
           <span class="post-time">
             发表于
-            <time itemprop="dateCreated" datetime="2015-11-24T20:49:46+08:00" content="2015-11-24">
-              2015-11-24
+            <time itemprop="dateCreated" datetime="2015-12-03T16:44:59+08:00" content="2015-12-03">
+              2015-12-03
             </time>
           </span>
 
@@ -249,11 +249,84 @@
         
           <span itemprop="articleBody">
             
-              <p>1、新买的 MAC 电脑默认的硬盘格式是不区分大小写。<br>   这个跟一般的服务器环境不同的。如果作为开发机的话，很容易出现文件名大小写没写好的问题。</p>
-<p>   解决:抹掉硬盘数据，并重新安装电脑系统。</p>
-<p>2、上一条，重装系统时，如果是使用time machine 来安装系统，那么会重新抹掉硬盘，然后使用时光机里的格式来安装。 所以是为了改变大小写的问题的话，是需要使用全新系统来安装的。</p>
-<p>3、photoshop是不能安装在区分大小写的硬盘上面。 所以如果已经使用区分大小写，又不想重装系统的话。可以选择使用虚拟机。</p>
-<p>4、time machine的数据是没有办法回复到低版本的系统上的。 如果是使用低版本系统来重装后，需要升级到 备份里面的对应版本之后，再进行数据迁移。</p>
+              <h2 id="安装">安装</h2><p>mac 使用brew 可以安装</p>
+<h2 id="运行">运行</h2><p>   logstash -e  ‘input{stdin{}}output{stdout{codec=&gt;rubydebug}}’</p>
+<h2 id="语法">语法</h2><p>Logstash 设计了自己的 DSL（领域专用语言 domain specific language） —— 包括有区域，注释，数据类型(布尔值，字符串，数值，数组，哈希)，条件判断，字段引用等。</p>
+<h3 id="区域(section)">区域(section)</h3><p>Logstash 用 {} 来定义区域。区域内可以包括插件区域定义，你可以在一个区域内定义多个插件。插件区域内则可以定义键值对设置。示例如下：</p>
+<pre><code><span class="tag">input</span> {
+    <span class="tag">stdin</span> {}
+    <span class="tag">syslog</span> {}
+}
+</code></pre><h3 id="数据类型">数据类型</h3><p>Logstash 支持少量的数据值类型：</p>
+<ul>
+<li>bool<pre><code><span class="keyword">debug</span> =&gt; <span class="literal">true</span>
+</code></pre></li>
+<li>string<pre><code>host =&gt; <span class="string">"hostname"</span>
+</code></pre></li>
+<li>number<pre><code><span class="foreign"><span class="keyword">port</span> =&gt; 514</span>
+</code></pre></li>
+<li>array<pre><code><span class="keyword">match</span> =&gt; [<span class="string">"datetime"</span>, <span class="string">"UNIX"</span>, <span class="string">"ISO8601"</span>]
+</code></pre></li>
+<li>hash<pre><code>options =&gt; {
+    key1 =&gt; <span class="string">"value1"</span>,
+    key2 =&gt; <span class="string">"value2"</span>
+}
+</code></pre>注意：如果你用的版本低于 1.2.0，哈希的语法跟数组是一样的，像下面这样写：<pre><code><span class="keyword">match</span> =&gt; [ <span class="string">"field1"</span>, <span class="string">"pattern1"</span>, <span class="string">"field2"</span>, <span class="string">"pattern2"</span> ]
+</code></pre></li>
+</ul>
+<h3 id="字段引用(field_reference)">字段引用(field reference)</h3><p>字段是 <code>Logstash::Event</code>对象的属性。我们之前提过事件就像一个哈希一样，所以你可以想象字段就像一个键值对。<br><em>小贴士：我们叫它字段，因为 Elasticsearch 里是这么叫的。</em><br>如果你想在 Logstash 配置中使用字段的值，只需要把字段的名字写在中括号 <code>[]</code>里就行了，这就叫<strong>字段引用</strong>。</p>
+<p>对于 <strong>嵌套字段</strong>(也就是多维哈希表，或者叫哈希的哈希)，每层的字段名都写在 <code>[]</code> 里就可以了。比如，你可以从 geoip 里这样获取 longitude 值(是的，这是个笨办法，实际上有单独的字段专门存这个数据的)：</p>
+<pre><code>[<span class="link_label">geoip</span>][<span class="link_reference">location</span>][<span class="link_label">0</span>]
+</code></pre><p><em>小贴士：logstash 的数组也支持倒序下标，即 <code>[geoip][location][-1]</code>可以获取数组最后一个元素的值。</em></p>
+<p>Logstash 还支持变量内插，在字符串里使用字段引用的方法是这样：</p>
+<pre><code>"the longitude is %{[<span class="link_label">geoip</span>][<span class="link_reference">location</span>][<span class="link_label">0</span>]}"
+</code></pre><h3 id="条件判断(condition)">条件判断(condition)</h3><p>条件判断(condition)</p>
+<p>Logstash从 1.3.0 版开始支持条件判断和表达式。<br>表达式支持下面这些操作符：</p>
+<ul>
+<li><code>==</code>(等于), <code>!=</code>(不等于), <code>&lt;</code>(小于), <code>&gt;</code>(大于), <code>&lt;=</code>(小于等于), <code>&gt;=</code>(大于等于)</li>
+<li><code>=~</code>(匹配正则), <code>!~</code>（不匹配正则）</li>
+<li><code>in</code>(包含), <code>not in</code>(不包含)</li>
+<li><code>and</code>(与), <code>or</code>(或), <code>nand</code>(非与), <code>xor</code>(非或)</li>
+<li><code>()</code>(复合表达式), <code>!()</code>(对复合表达式结果取反)</li>
+</ul>
+<p>通常来说，你都会在表达式里用到字段引用。为了尽量展示全面各种表达式，下面虚拟一个示例：</p>
+<pre><code>if "_grokparsefailure" not in [tags] {    
+} else if [<span class="link_label">status</span>] !~ /^2\d\d/ or ( [<span class="link_label">url</span>] == "/noc.gif" nand [<span class="link_label">geoip</span>][<span class="link_reference">city</span>]     != "beijing" ) {
+} else {
+}
+</code></pre><h3 id="命令行参数">命令行参数</h3><p>Logstash 提供了一个 shell 脚本叫 <code>logstash</code> 方便快速运行。它支持一下参数：</p>
+<ul>
+<li><p>-e<br>意即执行。我们在 “Hello World” 的时候已经用过这个参数了。事实上你可以不写任何具体配置，直接运行 <code>bin/logstash -e &#39;&#39;</code>达到相同效果。这个参数的默认值是下面这样：</p>
+<pre><code><span class="tag">input</span> {
+    <span class="tag">stdin</span> { }
+}
+<span class="tag">output</span> {
+    <span class="tag">stdout</span> { }
+}
+</code></pre></li>
+<li><p>--config 或 -f</p>
+</li>
+</ul>
+<p>意即<em>文件</em>。真实运用中，我们会写很长的配置，甚至可能超过 shell 所能支持的 1024 个字符长度。所以我们必把配置固化到文件里，然后通过 <code>bin/logstash -f agent.conf</code> 这样的形式来运行。<br>此外，logstash 还提供一个方便我们规划和书写配置的小功能。你可以直接用 <code>bin/logstash -f /etc/logstash.d/</code> 来运行。logstash 会自动读取 <code>/etc/logstash.d/</code> 目录下所有 <code>*.conf</code> 的文本文件，然后在自己内存里拼接成一个完整的大配置文件，再去执行。<br><strong>注意：</strong></p>
+<p>logstash 列出目录下所有文件时，是字母排序的。而 logstash 配置段的 filter 和 output 都是顺序执行，所以顺序非常重要。采用多文件管理的用户，推荐采用数字编号方式命名配置文件，同时在配置中，严谨采用 <code>if</code> 判断限定不同日志的动作。</p>
+<ul>
+<li><p>--configtest 或 -t<br>意即测试。用来测试 Logstash 读取到的配置文件语法是否能正常解析。Logstash 配置语法是用 grammar.treetop 定义的。尤其是使用了上一条提到的读取目录方式的读者，尤其要提前测试。</p>
+</li>
+<li><p>--log 或 -l<br>意即日志。Logstash 默认输出日志到标准错误。生产环境下你可以通过 <code>bin/logstash -l logs/logstash.log</code> 命令来统一存储日志。</p>
+</li>
+<li><p>--filterworkers 或 -w<br>意即<em>工作线程</em>。Logstash 会运行多个线程。你可以用 <code>bin/logstash -w 5</code> 这样的方式强制 Logstash 为过滤插件运行 5 个线程。<br><em>注意：Logstash目前还不支持输入插件的多线程。而输出插件的多线程需要在配置内部设置，这个命令行参数只是用来设置过滤插件的！</em></p>
+</li>
+</ul>
+<p><strong>提示：Logstash 目前不支持对过滤器线程的监测管理。如果 filterworker 挂掉，Logstash 会处于一个无 filter 的僵死状态。这种情况在使用 filter/ruby 自己写代码时非常需要注意，很容易碰上 <code>NoMethodError: undefined method &#39;*&#39; for nil:NilClass</code> 错误。需要妥善处理，提前判断。</strong></p>
+<ul>
+<li><p>--pluginpath 或 -P<br>可以写自己的插件，然后用 <code>bin/logstash --pluginpath /path/to/own/plugins</code> 加载它们。<br><em>小贴士：如果你使用的 Logstash 版本高于 1.5.0-rc3，该参数已经被取消，请阅读插件开发章节，改成本地 gem 插件安装形式。</em></p>
+</li>
+<li><p>--verbose<br>输出一定的调试日志。<br><em>小贴士：如果你使用的 Logstash 版本低于 1.3.0，你只能用 bin/logstash -v 来代替。</em></p>
+</li>
+<li><p>--debug<br>输出更多的调试日志。<br><em>小贴士：如果你使用的 Logstash 版本低于 1.3.0，你只能用 bin/logstash -vv 来代替。</em></p>
+</li>
+</ul>
+<p>参考地址：<a href="http://kibana.logstash.es/content/logstash/get_start/full_config.html" target="_blank" rel="external">http://kibana.logstash.es/content/logstash/get_start/full_config.html</a></p>
 
             
           </span>
@@ -317,7 +390,7 @@
         <nav class="site-state motion-element">
           <div class="site-state-item site-state-posts">
             <a href="/archives">
-              <span class="site-state-item-count">6</span>
+              <span class="site-state-item-count">7</span>
               <span class="site-state-item-name">日志</span>
             </a>
           </div>
